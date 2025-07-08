@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Timebox;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -16,7 +17,7 @@ new #[Layout('components.layouts.auth')] class extends Component {
             'email' => ['required', 'string', 'email'],
         ]);
 
-        Password::sendResetLink($this->only('email'));
+        app(Timebox::class)->call(fn () => Password::sendResetLink($this->only('email')), 200000);
 
         session()->flash('status', __('A reset link will be sent if the account exists.'));
     }
