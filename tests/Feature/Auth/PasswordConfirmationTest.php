@@ -4,6 +4,8 @@ namespace Tests\Feature\Auth;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Livewire\Volt\Volt;
 use Tests\TestCase;
 
@@ -46,5 +48,27 @@ class PasswordConfirmationTest extends TestCase
             ->call('confirmPassword');
 
         $response->assertHasErrors(['password']);
+    }
+
+    public function test_password_confirmation_is_rate_limited(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user);
+
+        for ($i = 0; $i < 5; $i++) {
+            Volt::test('auth.confirm-password')
+                ->set('password', 'wrong-password')
+                ->call('confirmPassword');
+        }
+
+        $response = Volt::test('auth.confirm-password')
+            ->set('password', 'wrong-password')
+            ->call('confirmPassword');
+
+        $key = Str::transliterate(Str::lower($user->email).'|'.request()->ip());
+
+        $response->assertHasErrors(['password']);
+        $this->assertTrue(RateLimiter::tooManyAttempts($key, 5));
     }
 }
